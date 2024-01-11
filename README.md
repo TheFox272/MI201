@@ -2,13 +2,13 @@
 Adversial attack of neural networks
 
 ```math
-\frac{\delta loss(f(x, \omega), y(x))}{\delta x}
+\frac{\delta loss(f(x, \omega), y(x))}{\delta x}\\
 
-||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255
+||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255\\
 
-z = net(x)
-\delta = request_grad()
-z_n = net(x + \delta)
+z = net(x)\\
+\delta = request_grad()\\
+z_n = net(x + \delta)\\
 obj = ||z - z_n||
 ```
 norme infinie(Xorigin - Xmodifé) <= Espilon = 4/255
