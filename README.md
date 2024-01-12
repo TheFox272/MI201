@@ -6,15 +6,14 @@ Attaque de réseau de neurone apr ajout d'un bruit ciblé.
 
 ```math
 \begin{align}
-\frac{\delta loss(f(x, \omega), y(x))}{\delta x}\\
-||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255\\
-z = net(x)\\
-\delta = request_grad()\\
-z_n = net(x + \delta)\\
-objective = ||z - z_n||_2  ↗
+&\frac{\delta loss(f(x, \omega), y(x))}{\delta x}\\
+&||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255\\
+&z = net(x)\\
+&z_n = net(x + \delta)\\
+&objective = ||z - z_n||_2  ↗
 \end{align}
 ```
-créer variable delta : delta.require_grad()
+créer variable delta : delta.request_grad() / .require_grad()
 obj.backward pour savoir dans quel sens changer delta pour augmenter la loss
 
 
