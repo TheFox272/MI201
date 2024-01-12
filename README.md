@@ -1,21 +1,27 @@
 # MI201
-Adversial attack of neural networks
+
+Attaque de réseau de neurone apr ajout d'un bruit ciblé.
+
+## Theorie 
 
 ```math
-\frac{\delta loss(f(x, \omega), y(x))}{\delta x}
-
-||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255
-
-z = net(x)
-\delata = request_grad()
-z_n = net(x + \delta)
-obj = ||z - z_n||
+\begin{align}
+&\frac{\delta loss(f(x, \omega), y(x))}{\delta x}\\
+&||x_{origin} - x_{noised}||_{\infty} \leq \epsilon = 4 / 255\\
+&z = net(x)\\
+&z_n = net(x + \delta)\\
+&objective = ||z - z_n||_2  ↗
+\end{align}
 ```
-norme infinie(Xorigin - Xmodifé) <= Espilon = 4/255
+créer variable delta : delta.request_grad() / .require_grad()
 
-z = net(x)
-créer variable delta : delta.require_grad()
-zm = net (x+delta)
-il faut que loss = norme(z-zm)² soit grand 
 obj.backward pour savoir dans quel sens changer delta pour augmenter la loss
 
+
+## Liens utiles
+
+[Xie_Adversarial_Examples_for_ICCV](https://openaccess.thecvf.com/content_ICCV_2017/papers/Xie_Adversarial_Examples_for_ICCV_2017_paper.pdf)
+
+[coursdeeplearningcolab](https://colab.research.google.com/github/achanhon/coursdeeplearningcolab/blob/master/Untitled19.ipynb#scrollTo=lTWt48SZwG0-)
+
+[adversarial-attacks-with-fgsm-fast-gradient-sign-method](https://pyimagesearch.com/2021/03/01/adversarial-attacks-with-fgsm-fast-gradient-sign-method/)
