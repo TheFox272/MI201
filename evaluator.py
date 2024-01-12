@@ -36,10 +36,13 @@ def visualize_and_evaluate_noise(image_noise_function):
     W = torchvision.models.segmentation.DeepLabV3_ResNet50_Weights.COCO_WITH_VOC_LABELS_V1
     net = torchvision.models.segmentation.deeplabv3_resnet50(weights=W)
 
-    with torch.no_grad():
-        x_transformed = (W.transforms())(x)
-        z_original = net(x_transformed)["out"][:, [0, 8, 12, 15], :, :]
-        _, z_original = z_original.max(1)
+    # with torch.no_grad():
+    #     x_transformed = (W.transforms())(x)
+    #     z_original = net(x_transformed)["out"][:, [0, 8, 12, 15], :, :]
+    #     _, z_original = z_original.max(1)
+    # torch.save(z_original, "../data/z_original.t")
+
+    z_original = torch.load("../data/z_original.t")
 
     images_noisy = [image_noise_function(image) for image in images]
     x_noisy = torch.stack(images_noisy, dim=0)
@@ -49,10 +52,8 @@ def visualize_and_evaluate_noise(image_noise_function):
         z_noisy = net(x_noisy_transformed)["out"][:, [0, 8, 12, 15], :, :]
         _, z_noisy = z_noisy.max(1)
 
-    noise_norm = torch.max(torch.abs(x - x_noisy))
-    changed_pixels = torch.sum(z_original != z_noisy)
-
     step = 3
+    avg_score = 0
     for i in range(0, len(images), step):
         fig, axs = plt.subplots(step, 6, figsize=(20, 20))
 
@@ -62,7 +63,9 @@ def visualize_and_evaluate_noise(image_noise_function):
             noise = x_noisy[i + j] - x[i + j]
             noisy_image = images_noisy[i + j].cpu().numpy().transpose(1, 2, 0)
             noisy_prediction = z_noisy[i + j].cpu().numpy()
-            changed_pixel_count = torch.sum(z_original[i + j] != z_noisy[i + j])
+
+            noise_norm = torch.mean(torch.linalg.matrix_norm(noise))
+            changed_pred_norm = torch.linalg.matrix_norm((z_original[i + j] - z_noisy[i + j]).double())
 
             axs[j, 0].imshow(original_image)
             axs[j, 0].set_title(f"Original {i + j + 1}")
@@ -71,7 +74,7 @@ def visualize_and_evaluate_noise(image_noise_function):
             axs[j, 1].set_title(f"Prediction {i + j + 1}")
 
             axs[j, 2].imshow(noise.cpu().numpy().transpose(1, 2, 0))
-            axs[j, 2].set_title(f"Noise {i + j + 1}\nInfinity Norm: {noise_norm.item():.4f}")
+            axs[j, 2].set_title(f"Noise {i + j + 1}\nNorm2 : {noise_norm.item():.4f}")
 
             axs[j, 3].imshow(noisy_image)
             axs[j, 3].set_title(f"Noisy {i + j + 1}")
@@ -79,15 +82,21 @@ def visualize_and_evaluate_noise(image_noise_function):
             axs[j, 4].imshow(noisy_prediction)
             axs[j, 4].set_title(f"Noisy Prediction {i + j + 1}")
 
+            actual_score = score(noise_norm.item(), changed_pred_norm.item())
+            avg_score += actual_score
+
             axs[j, 5].axis('off')
-            axs[j, 5].text(0, 0.5, f"Changed Pixels: {changed_pixel_count.item()}", fontsize=10)
+            axs[j, 5].text(0, 0.5, f"Score = {actual_score}", fontsize=10)
 
         plt.show()
 
-    return noise_norm.item(), changed_pixels.item()
+    return avg_score / 9
+
+def score(noise_norm, changed_pred_norm, noise_factor=2000):
+    print(changed_pred_norm, noise_norm)
+    return changed_pred_norm - noise_norm * noise_factor
 
 
-noise_norm, changed_pixels = visualize_and_evaluate_noise(gaussian_noise)
+avg_score = visualize_and_evaluate_noise(gaussian_noise)
 
-print("Norme infinie des bruits :", noise_norm)
-print("Nombre de pixels ayant changé de couleur :", changed_pixels)
+print(f"average score = {avg_score}")
