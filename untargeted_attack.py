@@ -111,7 +111,7 @@ def generate_adversaries(net, baseImage, delta, steps):
                 zm = zm[:,[0,8,12,15],:,:]
                 _ ,zm = zm.max(1)
 
-                norm_loss, norm_loss_coef = loss(z, zm)
+                norm_loss, norm_loss_coef = -loss(z, zm)
                 # check to see if we are logging the loss value, and if
                 # so, display it to our terminal
                 if step % 5 == 0:
