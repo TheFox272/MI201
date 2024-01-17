@@ -3,7 +3,6 @@ import matplotlib as mpl
 import os
 import matplotlib.pyplot as plt
 import torch, torchvision
-# from tensorflow.keras.optimizers import Adam
 import numpy as np
 
 
@@ -33,46 +32,30 @@ im7 = torch.nn.functional.interpolate(im7.unsqueeze(0), size=520)[0]
 im8 = torch.nn.functional.interpolate(im8.unsqueeze(0), size=520)[0]
 im9 = torch.nn.functional.interpolate(im9.unsqueeze(0), size=520)[0]
 
-visu = torch.cat([im1, im2, im3, im4, im5, im6, im7, im8, im9], dim=-1)
-visu = visu.cpu().numpy().transpose(1, 2, 0)
-dpi = plt.rcParams['figure.dpi']
-width_px = 1600
-height_px = 200
-# plt.figure(figsize=(width_px / dpi, height_px / dpi))
-# plt.imshow(visu)
-# plt.axis('off')
-# plt.show()
 
-
-
+def clip_eps(tensor, eps):
+    return torch.clip(tensor, eps,-eps)  
 
 def loss(im1,im2):
     s=[]
-    # print(len(im1))
-    # print(im1[0].shape)
     s.append(torch.mean(torch.linalg.matrix_norm((im1-im2).double())))
     return torch.stack(s,dim=0)
 
 #Fast gradient sign method for untargeted attack
 def generate_adversaries(net,baseImage, adv):
-    # print(adv[0].shape)
+    delta = []
     adv = (W.transforms())(adv)
     #pour chaque image, on évalue la prédiction, dont on calcule la loss, puis on calcule le gradient de la loss par rapport à l'image et on update adv
     for j in range (9):
         net.eval()
         a = adv[j][None,:,:,:]
         a.requires_grad = True  
-        # print(a.requires_grad)
         zm = net(a)["out"] # on prédit des cartes de score de confiance
-        # zm = zm[:,[0,8,12,15],:,:]
         _ ,zm = zm.max(1)
 
-        # print("zm = ",zm.shape)
         norm_loss = torch.negative(loss(zf, zm))
-        # adv.retain_grad()
         print("loss = ",norm_loss)
 
-        # net.zero_grad()
         norm_loss.requires_grad = True
         norm_loss.mean().backward(retain_graph=True)
         data_grad = norm_loss.grad
@@ -81,47 +64,42 @@ def generate_adversaries(net,baseImage, adv):
         print("delta = ", EPS*data_grad.sign())
         print("adv = ", j,adv[j].shape, baseImage[j].shape, EPS*data_grad.sign())
         adv[j] = baseImage[j] + EPS*data_grad.sign()
+        delta.append(EPS*data_grad.sign())
         norm_loss.grad.zero_()
-    # with torch.no_grad():
-        # delta_init -= delta_init.grad * LR
 
-
-    return adv
+    return delta
 
 # generate the perturbation vector to create an adversarial example
 print("[INFO] generating perturbation...")
 print("[INFO] creating adversarial example...")
 
 # define the epsilon
-EPS = 0.01
-LR = 0.1
+EPS = 0.1
 x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
 baseImage = (W.transforms())(x)
-# print(baseImage[0].shape)
-baseImage = baseImage.clone().detach()
-delta_init = torch.stack([torch.randn_like(EPS*baseImage[i]) for i in range(9)],dim=0)
-# print(delta_init.shape)
-# print(delta_init)
-# print(delta_init.requires_grad)
 zf = net(baseImage)["out"] # on prédit des cartes de score de confiance pour le calcul de la loss dans generate_adversaries
-# z = z[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
 _,zf = zf.max(1)
-adv = baseImage + EPS#*delta_init #on inititialise les adversaires
-adversaries = generate_adversaries(net, baseImage, adv)
+noise = torch.randn_like(baseImage)*EPS
+adv = baseImage + noise #on inititialise les adversaires avec du bruit
+delta = generate_adversaries(net, baseImage, adv) # delta est la perturbation à appliquer à chaque image
 
-t = torch.zeros(3,20,20)
-e = torch.tensor([0.1])
-# print(t.shape,t,t+e, (t+e).shape)
+# Visualisation d'une image avec bruit
+# print(noise.shape,noise)
+# plt.imshow((im1 + noise[0]+delta[0]).numpy().transpose(1,2,0))
+# plt.show()
+
 net.train()	
 
 ## Visualisation
 with torch.no_grad():
-  zm = net(adversaries)["out"] # on prédit des cartes de score de confiance
+  adversaries = (W.transforms())(adv)
+  zm = net(adversaries)["out"] # on prédit des cartes de score de confiance pour les adversaires
   zm = zm[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
   _,zm = zm.max(1) # on prend le meilleur score
+
   x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
   x = (W.transforms())(x)
-  z = net(x)["out"] # on prédit des cartes de score de confiance
+  z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
   z = z[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
   _,z = z.max(1) # on prend le meilleur score
 
@@ -132,13 +110,14 @@ couleur[:,2,:,:] = (z==3).float() # blue for person
 visu = torch.cat([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=-1)
 visubis = torch.cat([couleur[i] for i in range(9)],dim=-1).cpu()
 
+im = [im1,im2,im3,im4,im5,im6,im7,im8,im9]
 couleurm = torch.zeros(9,3,520,520)
 couleurm[:,0,:,:] = (zm==1).float() # red for cat
 couleurm[:,1,:,:] = (zm==2).float() # green for dog
 couleurm[:,2,:,:] = (zm==3).float() # blue for person   
-visum = torch.cat([adversaries[i] for i in range(9)],dim=-1).cpu()
+visum = torch.cat([im[i] +noise[i] + delta[i] for i in range(9)],dim=-1).cpu()
 visubism = torch.cat([couleurm[i] for i in range(9)],dim=-1).cpu()
-visum = visum.detach()
+
 visu = torch.cat([visu,visubis,visum,visubism],dim=1)
 visu = visu.cpu().numpy().transpose(1,2,0)
 dpi = plt.rcParams['figure.dpi']
