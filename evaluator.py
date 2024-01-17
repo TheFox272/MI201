@@ -74,7 +74,7 @@ def visualize_and_evaluate_noise(image_noise_function):
             axs[j, 1].set_title(f"Prediction {i + j + 1}")
 
             axs[j, 2].imshow(noise.cpu().numpy().transpose(1, 2, 0))
-            axs[j, 2].set_title(f"Noise {i + j + 1}\nNorm2 : {noise_norm.item():.4f}")
+            axs[j, 2].set_title(f"Noise {i + j + 1}, norm2 : {noise_norm.item():.4f}")
 
             axs[j, 3].imshow(noisy_image)
             axs[j, 3].set_title(f"Noisy {i + j + 1}")
@@ -93,7 +93,6 @@ def visualize_and_evaluate_noise(image_noise_function):
     return avg_score / 9
 
 def score(noise_norm, changed_pred_norm, noise_factor=2000):
-    print(changed_pred_norm, noise_norm)
     return changed_pred_norm - noise_norm * noise_factor
 
 
