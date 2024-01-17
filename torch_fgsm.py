@@ -51,9 +51,16 @@ def generate_adversaries(net,baseImage, adv):
         a = adv[j][None,:,:,:]
         a.requires_grad = True  
         zm = net(a)["out"] # on prédit des cartes de score de confiance
-        _ ,zm = zm.max(1)
+        # print("zm = ",zm)
+        with torch.no_grad():
+            zm = zm[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
+            # print("zm = ",zm,zm.shape)
+            zm = zm.amax(1)
+        # print("zm = ",zm,zm.shape)
 
-        norm_loss = torch.negative(loss(zf, zm))
+        # print(zm.shape, zf[j][None,:,:].shape)
+        # print("zm = ",zm)
+        norm_loss = torch.negative(loss(zf[j], zm))
         print("loss = ",norm_loss)
 
         norm_loss.requires_grad = True
@@ -78,6 +85,7 @@ EPS = 0.1
 x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
 baseImage = (W.transforms())(x)
 zf = net(baseImage)["out"] # on prédit des cartes de score de confiance pour le calcul de la loss dans generate_adversaries
+zf = zf[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
 _,zf = zf.max(1)
 noise = torch.randn_like(baseImage)*EPS
 adv = baseImage + noise #on inititialise les adversaires avec du bruit
@@ -96,7 +104,7 @@ with torch.no_grad():
   zm = net(adversaries)["out"] # on prédit des cartes de score de confiance pour les adversaires
   zm = zm[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
   _,zm = zm.max(1) # on prend le meilleur score
-
+  
   x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
   x = (W.transforms())(x)
   z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
