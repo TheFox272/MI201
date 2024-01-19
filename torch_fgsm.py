@@ -70,7 +70,7 @@ def generate_adversaries(net,baseImage, adv):
         print("data_grad = ",data_grad.sign())
         print("delta = ", EPS*data_grad.sign())
         print("adv = ", j,adv[j].shape, baseImage[j].shape, EPS*data_grad.sign())
-        adv[j] = baseImage[j] + EPS*data_grad.sign()
+        adv[j] = adv[j] + EPS*data_grad.sign()
         delta.append(EPS*data_grad.sign())
         norm_loss.grad.zero_()
 
