@@ -36,14 +36,17 @@ im9 = torch.nn.functional.interpolate(im9.unsqueeze(0), size=520)[0]
 delta = [0 for i in range(9)]
 x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
 x = (W.transforms())(x)
+z_init = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
+z_init = z_init[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
+_,index = z_init.max(1)
 # y = x[j][None,:,:,:]
 x.requires_grad = True
 for j in range (9):
-    for k in range (1):
+    for k in range (3):
         z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
         z = z[:,[0,8,12,15],:,:]
         print("x=",x[j])
-        _,index = z.max(1)
+        _,indexm = z.max(1)
         print(z[j][None,:,:,:].shape,index[j][None,:,:].shape)
         loss = F.nll_loss(z[j][None,:,:], index[j][None,:,:])
         loss.backward()            
@@ -58,13 +61,20 @@ for j in range (9):
 
 im = [im1,im2,im3,im4,im5,im6,im7,im8,im9]
 couleurm = torch.zeros(9,3,520,520)
-couleurm[:,0,:,:] = (index==1).float() # red for cat
-couleurm[:,1,:,:] = (index==2).float() # green for dog
-couleurm[:,2,:,:] = (index==3).float() # blue for person   
+couleurm[:,0,:,:] = (indexm==1).float() # red for cat
+couleurm[:,1,:,:] = (indexm==2).float() # green for dog
+couleurm[:,2,:,:] = (indexm==3).float() # blue for person   
 visum = torch.cat([im[i]  + delta[i] for i in range(9)],dim=-1).cpu()#+noise[i]
 visubism = torch.cat([couleurm[i] for i in range(9)],dim=-1).cpu()
 
-visu = torch.cat([visum,visubism],dim=1)
+couleur = torch.zeros(9,3,520,520)
+couleur[:,0,:,:] = (index==1).float() # red for cat
+couleur[:,1,:,:] = (index==2).float() # green for dog
+couleur[:,2,:,:] = (index==3).float() # blue for person
+visu = torch.cat([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=-1)
+visubis = torch.cat([couleur[i] for i in range(9)],dim=-1).cpu()
+
+visu = torch.cat([visu,visubis,visum,visubism],dim=1)
 visu = visu.cpu().numpy().transpose(1,2,0)
 dpi = plt.rcParams['figure.dpi']
 width_px = 1600
