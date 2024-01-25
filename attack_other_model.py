@@ -5,6 +5,10 @@ import torch, torchvision
 import numpy as np
 import torch.nn.functional as F
 
+from torchvision.io.image import read_image
+from torchvision.models.segmentation import fcn_resnet50, FCN_ResNet50_Weights
+from torchvision.transforms.functional import to_pil_image
+
 
 W = torchvision.models.segmentation.DeepLabV3_ResNet50_Weights.COCO_WITH_VOC_LABELS_V1
 net = torchvision.models.segmentation.deeplabv3_resnet50(weights=W)
@@ -32,7 +36,30 @@ im7 = torch.nn.functional.interpolate(im7.unsqueeze(0), size=520)[0]
 im8 = torch.nn.functional.interpolate(im8.unsqueeze(0), size=520)[0]
 im9 = torch.nn.functional.interpolate(im9.unsqueeze(0), size=520)[0]
 
-# net.eval()
+
+img = read_image("217730183_8f58409e7c_z.jpg")
+
+# Step 1: Initialize model with the best available weights
+weights = FCN_ResNet50_Weights.DEFAULT
+model = fcn_resnet50(weights=weights)
+model.eval()
+
+# Step 2: Initialize the inference transforms
+preprocess = weights.transforms()
+
+# Step 3: Apply inference preprocessing transforms
+img = torch.nn.functional.interpolate(img.unsqueeze(0), size=520)[0]
+batch = preprocess(img).unsqueeze(0)
+
+# Step 4: Use the model and visualize the prediction
+prediction = model(batch)["out"]
+normalized_masks = prediction.softmax(dim=1)
+class_to_idx = {cls: idx for (idx, cls) in enumerate(weights.meta["categories"])}
+mask = normalized_masks[0, class_to_idx["cat"]]
+# mask2 = normalized_masks[0, class_to_idx["dog"]]
+to_pil_image(mask).show()
+
+
 delta = [0 for i in range(9)]
 x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
 x = (W.transforms())(x)
@@ -41,7 +68,7 @@ z_init = z_init[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
 _,index = z_init.max(1)
 # y = x[j][None,:,:,:]
 x.requires_grad = True
-for j in range (9):
+for j in range (1):
     for step in range (1):
         print("step =",step)
         z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
@@ -61,31 +88,12 @@ for j in range (9):
     x.grad.data.zero_()
 
 
-for i in range (9) :
-    print("noise norm = ", i, delta[i], torch.mean(torch.linalg.matrix_norm(delta[i])))
+batch = preprocess(img + delta[0]).unsqueeze(0)
 
-
-im = [im1,im2,im3,im4,im5,im6,im7,im8,im9]
-couleurm = torch.zeros(9,3,520,520)
-couleurm[:,0,:,:] = (indexm==1).float() # red for cat
-couleurm[:,1,:,:] = (indexm==2).float() # green for dog
-couleurm[:,2,:,:] = (indexm==3).float() # blue for person   
-visum = torch.cat([im[i]  + delta[i] for i in range(9)],dim=-1).cpu()#+noise[i]
-visubism = torch.cat([couleurm[i] for i in range(9)],dim=-1).cpu()
-
-couleur = torch.zeros(9,3,520,520)
-couleur[:,0,:,:] = (index==1).float() # red for cat
-couleur[:,1,:,:] = (index==2).float() # green for dog
-couleur[:,2,:,:] = (index==3).float() # blue for person
-visu = torch.cat([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=-1)
-visubis = torch.cat([couleur[i] for i in range(9)],dim=-1).cpu()
-
-visu = torch.cat([visu,visubis,visum,visubism],dim=1)
-visu = visu.cpu().numpy().transpose(1,2,0)
-dpi = plt.rcParams['figure.dpi']
-width_px = 1600
-height_px = 400
-plt.figure(figsize=(width_px/dpi, height_px/dpi))
-plt.imshow(visu)
-plt.axis('off')
-plt.show()
+# Step 4: Use the model and visualize the prediction
+prediction = model(batch)["out"]
+normalized_masks = prediction.softmax(dim=1)
+class_to_idx = {cls: idx for (idx, cls) in enumerate(weights.meta["categories"])}
+mask = normalized_masks[0, class_to_idx["cat"]]
+# mask2 = normalized_masks[0, class_to_idx["dog"]]
+to_pil_image(mask).show()

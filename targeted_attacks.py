@@ -45,7 +45,7 @@ _,index = z_init.max(1)
 # y = x[j][None,:,:,:]
 x.requires_grad = True
 for j in range (9):
-    for step in range (3):
+    for step in range (1):
         print("step =",step)
         z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
         z = z[:,[0,8,12,15],:,:]
