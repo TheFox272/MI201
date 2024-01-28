@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch, torchvision
 import numpy as np
 import torch.nn.functional as F
-
+from torchvision.utils import save_image
 
 W = torchvision.models.segmentation.DeepLabV3_ResNet50_Weights.COCO_WITH_VOC_LABELS_V1
 net = torchvision.models.segmentation.deeplabv3_resnet50(weights=W)
@@ -59,7 +59,7 @@ for j in range (9):
             delta[j] = delta[j] + 4/255 * data_grad[j].sign()
         print("x=",x[j])
     x.grad.data.zero_()
-
+    save_image(delta[j], 'noise_{}.png'.format(j)) 
 
 for i in range (9) :
     print("noise norm = ", i, delta[i], torch.mean(torch.linalg.matrix_norm(delta[i])))

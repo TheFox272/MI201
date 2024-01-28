@@ -26,74 +26,35 @@ im7 = torchvision.io.read_image("4683642953_2eeda0820e_z.jpg").float() / 255
 im8 = torchvision.io.read_image("6911037487_cc68a9d5a4_z.jpg").float() / 255
 im9 = torchvision.io.read_image("8139728801_60c233660e_z.jpg").float() / 255
 
-im1 = torch.nn.functional.interpolate(im1.unsqueeze(0), size=520)[0]
-im2 = torch.nn.functional.interpolate(im2.unsqueeze(0), size=520)[0]
-im3 = torch.nn.functional.interpolate(im3.unsqueeze(0), size=520)[0]
-im4 = torch.nn.functional.interpolate(im4.unsqueeze(0), size=520)[0]
-im5 = torch.nn.functional.interpolate(im5.unsqueeze(0), size=520)[0]
-im6 = torch.nn.functional.interpolate(im6.unsqueeze(0), size=520)[0]
-im7 = torch.nn.functional.interpolate(im7.unsqueeze(0), size=520)[0]
-im8 = torch.nn.functional.interpolate(im8.unsqueeze(0), size=520)[0]
-im9 = torch.nn.functional.interpolate(im9.unsqueeze(0), size=520)[0]
+im0_noise = torchvision.io.read_image("im0_noise.png").float()/255
+im1_noise = torchvision.io.read_image("im1_noise.png").float()/255
+im2_noise = torchvision.io.read_image("im2_noise.png").float()/255
+im3_noise = torchvision.io.read_image("im3_noise.png").float()/255
+im4_noise = torchvision.io.read_image("im4_noise.png").float()/255
+im5_noise = torchvision.io.read_image("im5_noise.png").float()/255
+im6_noise = torchvision.io.read_image("im6_noise.png").float()/255
+im7_noise = torchvision.io.read_image("im7_noise.png").float()/255
+im8_noise = torchvision.io.read_image("im8_noise.png").float()/255
 
-
-img = read_image("217730183_8f58409e7c_z.jpg")
 
 # Step 1: Initialize model with the best available weights
 weights = FCN_ResNet50_Weights.DEFAULT
 model = fcn_resnet50(weights=weights)
+# model.cuda()
 model.eval()
 
 # Step 2: Initialize the inference transforms
 preprocess = weights.transforms()
 
 # Step 3: Apply inference preprocessing transforms
-img = torch.nn.functional.interpolate(img.unsqueeze(0), size=520)[0]
-batch = preprocess(img).unsqueeze(0)
+# img = torch.nn.functional.interpolate(im0.unsqueeze(0), size=520)[0]
+batch = preprocess(im2_noise)
 
 # Step 4: Use the model and visualize the prediction
-prediction = model(batch)["out"]
+prediction = model(batch[None,:,:,:])["out"]
 normalized_masks = prediction.softmax(dim=1)
 class_to_idx = {cls: idx for (idx, cls) in enumerate(weights.meta["categories"])}
-mask = normalized_masks[0, class_to_idx["cat"]]
+mask = normalized_masks[0, class_to_idx["dog"]]
 # mask2 = normalized_masks[0, class_to_idx["dog"]]
 to_pil_image(mask).show()
 
-
-delta = [0 for i in range(9)]
-x = torch.stack([im1,im2,im3,im4,im5,im6,im7,im8,im9],dim=0)
-x = (W.transforms())(x)
-z_init = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
-z_init = z_init[:,[0,8,12,15],:,:] # we keep only person, cat and dog class
-_,index = z_init.max(1)
-# y = x[j][None,:,:,:]
-x.requires_grad = True
-for j in range (1):
-    for step in range (1):
-        print("step =",step)
-        z = net(x)["out"] # on prédit des cartes de score de confiance pour les images non bruitées
-        z = z[:,[0,8,12,15],:,:]
-        print("x=",x[j])
-        _,indexm = z.max(1)
-        print(z[j][None,:,:,:].shape,index[j][None,:,:].shape)
-        loss = F.nll_loss(z[j][None,:,:], index[j][None,:,:])
-        loss.backward()            
-        print("loss = ",loss)
-        data_grad = x.grad 
-        print("data grad", data_grad[j],data_grad.shape)
-        with torch.no_grad():
-            x[j] = x[j] + 4/255 * data_grad[j].sign()
-            delta[j] = delta[j] + 4/255 * data_grad[j].sign()
-        print("x=",x[j])
-    x.grad.data.zero_()
-
-
-batch = preprocess(img + delta[0]).unsqueeze(0)
-
-# Step 4: Use the model and visualize the prediction
-prediction = model(batch)["out"]
-normalized_masks = prediction.softmax(dim=1)
-class_to_idx = {cls: idx for (idx, cls) in enumerate(weights.meta["categories"])}
-mask = normalized_masks[0, class_to_idx["cat"]]
-# mask2 = normalized_masks[0, class_to_idx["dog"]]
-to_pil_image(mask).show()
