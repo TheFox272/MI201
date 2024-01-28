@@ -56,7 +56,7 @@ for j in range (9):
         print(z[j][None,:,:,:].shape,index[j][None,:,:].shape)
         loss_real = F.nll_loss(z[j][None,:,:], index[j][None,:,:]) #nn.CrossEntropyLoss()
         loss_target = F.nll_loss(z[j][None,:,:], index_target[j][None,:,:])
-        loss = loss_target - loss_real # on veut minimiser la probabilité de la vraie classe et maximiser la probabilité de la target classe
+        loss = - loss_target + loss_real # on veut minimiser la probabilité de la vraie classe et maximiser la probabilité de la target classe
         loss.backward()            
         print("loss = ",loss)
         data_grad = x.grad
